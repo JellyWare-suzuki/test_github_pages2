@@ -200,7 +200,6 @@
                     Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 30, GAME_WIDTH, 60, wallOptions),
                     Bodies.rectangle(-30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),
                     Bodies.rectangle(GAME_WIDTH + 30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),
-                    // 天井も追加してツムが飛び出しすぎないようにする
                     Bodies.rectangle(GAME_WIDTH / 2, -30, GAME_WIDTH, 60, wallOptions)
                 ]);
                 
@@ -214,7 +213,6 @@
                 timerElement.textContent = timeLeft;
                 gameOverPanel.classList.add('hidden');
                 
-                // 最初のツムをたくさん生成
                 for (let i = 0; i < 70; i++) {
                     setTimeout(() => addTsum(true), i * 20);
                 }
@@ -236,29 +234,27 @@
 
                 let type;
                 const rand = Math.random();
-                // No.14, 15: 確率で特殊ツムを出現させる
-                if (rand < 0.03) { // 3%の確率
+                if (rand < 0.03) {
                     type = FRUIT_TYPES.RAINBOW;
-                } else if (rand < 0.06) { // 3%の確率
+                } else if (rand < 0.06) {
                     type = FRUIT_TYPES.TIME;
                 } else {
                     type = REGULAR_FRUITS[Math.floor(Math.random() * REGULAR_FRUITS.length)];
                 }
 
                 const x = Math.random() * (GAME_WIDTH - TSUM_RADIUS * 4) + TSUM_RADIUS * 2;
-                const y = Math.random() * 100 - 150; // 画面上部からランダムに
+                const y = Math.random() * 100 - 150;
                 
                 const tsum = Bodies.circle(x, y, TSUM_RADIUS, {
                     restitution: 0.5,
                     friction: 0.1,
-                    frictionAir: 0.05, // 無重力なので空気抵抗を少し
+                    frictionAir: 0.05,
                     label: 'tsum',
                     tsumData: type
                 });
                 World.add(world, tsum);
             }
             
-            // No.16: 効果音再生の準備
             function setupAudio() {
                 if (!audioCtx) {
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -280,7 +276,6 @@
                 oscillator.stop(audioCtx.currentTime + 0.2);
             }
             
-            // No.2: キラキラパーティクルを生成
             function createParticles(x, y, color) {
                 for (let i = 0; i < 10; i++) {
                     particles.push({
@@ -293,7 +288,6 @@
                 }
             }
 
-            // --- イベント処理 ---
             let isMouseSetup = false;
             function setupMouseEvents() {
                 if(isMouseSetup) return;
@@ -306,11 +300,10 @@
 
                 const handleStart = (e) => {
                     e.preventDefault();
-                    setupAudio(); // ユーザー操作をきっかけにAudioContextを初期化
+                    setupAudio();
                     if (isGameOver) return;
                     const pos = getEventPos(e);
 
-                    // ボムのタップ判定
                     const bodies = Composite.allBodies(world);
                     const clickedBomb = bodies.find(body => 
                         body.label === 'tsum' && body.tsumData.isBomb && Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS
@@ -321,7 +314,6 @@
                         return;
                     }
 
-                    // 通常のドラッグ開始
                     const foundTsum = bodies.find(body => 
                         body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS
                     );
@@ -334,7 +326,7 @@
 
                 const handleMove = (e) => {
                     e.preventDefault();
-                    if (!isDragging) return;
+                    if (!isDragging || currentChain.length === 0) return;
                     const pos = getEventPos(e);
                     const bodies = Composite.allBodies(world);
                     
@@ -343,7 +335,6 @@
                     const foundTsum = bodies.find(body => {
                         if (body.label !== 'tsum' || currentChain.includes(body)) return false;
                         
-                        // No.14: レインボーツムの接続ロジック
                         const isConnectable = chainColorId === undefined || body.tsumData.id === chainColorId || body.tsumData.isRainbow;
                         
                         return isConnectable &&
@@ -367,7 +358,6 @@
                         let baseScore = 0;
                         let timeToAdd = 0;
                         
-                        // No.13: 7つ以上でボム生成
                         const shouldCreateBomb = currentChain.length >= 7;
                         const bombTsum = shouldCreateBomb ? currentChain[currentChain.length-1] : null;
 
@@ -375,7 +365,6 @@
                             if (tsum !== bombTsum) {
                                 baseScore += tsum.tsumData.score;
                                 chainScore = baseScore * (1 + (index * 0.1));
-                                // No.15: タイムツムの効果
                                 if (tsum.tsumData.isTime) timeToAdd += 3;
                                 
                                 createParticles(tsum.position.x, tsum.position.y, tsum.tsumData.color || 'white');
@@ -384,7 +373,8 @@
                         });
                         
                         if (shouldCreateBomb) {
-                            Body.set(bombTsum, { tsumData: FRUIT_TYPES.BOMB });
+                            // ★修正点: Body.setではなく、直接プロパティを書き換える
+                            bombTsum.tsumData = FRUIT_TYPES.BOMB;
                         }
 
                         updateScore(Math.round(chainScore));
@@ -400,7 +390,6 @@
                 canvas.addEventListener('touchstart', handleStart);
                 canvas.addEventListener('touchmove', handleMove);
                 window.addEventListener('touchend', handleEnd);
-                // No.18: シャッフルボタンのイベント
                 shuffleButton.addEventListener('click', shuffleTsums);
 
                 isMouseSetup = true;
@@ -412,17 +401,18 @@
                 const bodies = Composite.allBodies(world);
                 let bombScore = 0;
 
-                createParticles(bomb.position.x, bomb.position.y, '#ff4500'); // 爆発エフェクト
+                createParticles(bomb.position.x, bomb.position.y, '#ff4500');
 
                 bodies.forEach(body => {
                     if (body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, bomb.position)) < bombRadius) {
                         bombScore += body.tsumData.score;
+                        // ★修正点: レインボーフルーツなど、colorプロパティがない場合に備える
                         createParticles(body.position.x, body.position.y, body.tsumData.color || 'white');
                         World.remove(world, body);
                     }
                 });
-                World.remove(world, bomb);
-                updateScore(bombScore * 2); // ボムはスコア2倍！
+                
+                updateScore(bombScore * 2);
             }
 
             function shuffleTsums() {
@@ -430,7 +420,6 @@
                 const bodies = Composite.allBodies(world);
                 bodies.forEach(body => {
                     if (body.label === 'tsum') {
-                        // ランダムな力を加えてシャッフル
                         const forceMagnitude = 0.05;
                         const force = {
                             x: (Math.random() - 0.5) * forceMagnitude,
@@ -511,20 +500,23 @@
                     }
                 });
                 
-                // No.2: パーティクルの描画と更新
                 ctx.globalCompositeOperation = 'lighter';
-                particles.forEach((p, index) => {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
                     p.x += p.vx;
                     p.y += p.vy;
                     p.lifespan--;
-                    if (p.lifespan <= 0) particles.splice(index, 1);
+                    if (p.lifespan <= 0) {
+                        particles.splice(i, 1);
+                        continue;
+                    }
 
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, Math.max(0, p.lifespan / 10), 0, 2 * Math.PI);
                     ctx.fillStyle = p.color;
                     ctx.globalAlpha = Math.max(0, p.lifespan / 50);
                     ctx.fill();
-                });
+                }
                 ctx.globalAlpha = 1.0;
                 ctx.globalCompositeOperation = 'source-over';
 
