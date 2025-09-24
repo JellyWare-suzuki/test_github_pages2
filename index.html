@@ -1,252 +1,416 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>テトリスゲーム</title>
-  <style>
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      background-color: #333;
-    }
-    canvas {
-      border: 2px solid #fff;
-      background-color: #000;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ツムツム風ゲーム</title>
+
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f8ff;
+            color: #333;
+        }
+
+        h1 {
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        #game-container {
+            position: relative;
+            border: 2px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: #fff;
+        }
+
+        #game-canvas {
+            display: block;
+            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+            background-color: #e3f2fd;
+        }
+
+        #info-panel {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            font-weight: bold;
+        }
+
+        .info-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .info-box .label {
+            font-size: 0.8em;
+            color: #aaa;
+        }
+
+        .info-box span {
+            font-size: 1.5em;
+        }
+
+        #game-over-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        #game-over-panel h2 {
+            margin-top: 0;
+            font-size: 2.5em;
+        }
+
+        #restart-button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff9800;
+            color: white;
+            transition: background-color 0.3s;
+        }
+
+        #restart-button:hover {
+            background-color: #f57c00;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
+    <h1>ツムツム風ゲーム</h1>
+    <div id="game-container">
+        <div id="info-panel">
+            <div class="info-box">
+                <span class="label">SCORE</span>
+                <span id="score">0</span>
+            </div>
+            <div class="info-box">
+                <span class="label">TIME</span>
+                <span id="timer">60</span>
+            </div>
+        </div>
+        <canvas id="game-canvas"></canvas>
+    </div>
 
-<canvas id="tetris" width="240" height="400"></canvas>
+    <div id="game-over-panel" class="hidden">
+        <h2>TIME UP!</h2>
+        <p>Your Score: <span id="final-score">0</span></p>
+        <button id="restart-button">もう一度遊ぶ</button>
+    </div>
 
-<script>
-  const canvas = document.getElementById('tetris');
-  const context = canvas.getContext('2d');
-  context.scale(20, 20);
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
-  const arena = createMatrix(12, 20);
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Matter.js モジュールのエイリアス設定 ---
+            const { Engine, Render, Runner, World, Bodies, Composite, Events, Vector, Bounds } = Matter;
 
-  const player = {
-    pos: {x: 0, y: 0},
-    matrix: null,
-    score: 0,
-  };
+            // --- ゲームの基本設定 ---
+            const GAME_WIDTH = 450;
+            const GAME_HEIGHT = 700;
+            const INFO_PANEL_HEIGHT = 60; // 情報パネルの高さ
+            const TSUM_RADIUS = 25; // ツムの半径
+            const GAME_TIME = 60; // ゲーム時間（秒）
 
-  const colors = [
-    null,
-    '#FF0D72',
-    '#0DC2FF',
-    '#0DFF72',
-    '#F538FF',
-    '#FF8E0D',
-    '#FFE138',
-    '#3877FF',
-  ];
+            // --- DOM要素の取得 ---
+            const canvas = document.getElementById('game-canvas');
+            const scoreElement = document.getElementById('score');
+            const timerElement = document.getElementById('timer');
+            const gameOverPanel = document.getElementById('game-over-panel');
+            const finalScoreElement = document.getElementById('final-score');
+            const restartButton = document.getElementById('restart-button');
+            
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
 
-  function createMatrix(w, h) {
-    const matrix = [];
-    while (h--) {
-      matrix.push(new Array(w).fill(0));
-    }
-    return matrix;
-  }
+            // --- ツムの種類を定義 ---
+            const TSUM_TYPES = [
+                { id: 1, color: '#e60012', score: 100 }, // ミッキー風
+                { id: 2, color: '#f39800', score: 120 }, // プーさん風
+                { id: 3, color: '#009e96', score: 140 }, // ドナルド風
+                { id: 4, color: '#fff100', score: 110 }, // プルート風
+                { id: 5, color: '#8f4e27', score: 150 }, // グーフィー風
+            ];
 
-  function createPiece(type) {
-    if (type === 'T') {
-      return [
-        [0, 1, 0],
-        [1, 1, 1],
-        [0, 0, 0],
-      ];
-    } else if (type === 'O') {
-      return [
-        [2, 2],
-        [2, 2],
-      ];
-    } else if (type === 'L') {
-      return [
-        [0, 3, 0],
-        [0, 3, 0],
-        [0, 3, 3],
-      ];
-    } else if (type === 'J') {
-      return [
-        [0, 4, 0],
-        [0, 4, 0],
-        [4, 4, 0],
-      ];
-    } else if (type === 'I') {
-      return [
-        [0, 5, 0, 0],
-        [0, 5, 0, 0],
-        [0, 5, 0, 0],
-        [0, 5, 0, 0],
-      ];
-    } else if (type === 'S') {
-      return [
-        [0, 6, 6],
-        [6, 6, 0],
-        [0, 0, 0],
-      ];
-    } else if (type === 'Z') {
-      return [
-        [7, 7, 0],
-        [0, 7, 7],
-        [0, 0, 0],
-      ];
-    }
-  }
+            // --- ゲームの状態変数 ---
+            let engine, world, runner;
+            let score, timeLeft, timerInterval, addTsumInterval;
+            let isDragging = false;
+            let currentChain = [];
+            let lastTsum = null;
+            let isGameOver = false;
 
-  function collide(arena, player) {
-    const [m, o] = [player.matrix, player.pos];
-    for (let y = 0; y < m.length; ++y) {
-      for (let x = 0; x < m[y].length; ++x) {
-        if (m[y][x] !== 0 &&
-           (arena[y + o.y] &&
-            arena[y + o.y][x + o.x]) !== 0) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
+            // --- ゲーム初期化関数 ---
+            function initGame() {
+                // --- 1. 物理エンジンのセットアップ ---
+                engine = Engine.create();
+                world = engine.world;
+                engine.gravity.y = 1.2;
 
-  function merge(arena, player) {
-    player.matrix.forEach((row, y) => {
-      row.forEach((value, x) => {
-        if (value !== 0) {
-          arena[y + player.pos.y][x + player.pos.x] = value;
-        }
-      });
-    });
-  }
+                // --- 2. Runnerの作成 ---
+                runner = Runner.create();
+                Runner.run(runner, engine);
 
-  function rotate(matrix, dir) {
-    for (let y = 0; y < matrix.length; ++y) {
-      for (let x = 0; x < y; ++x) {
-        [
-          matrix[x][y],
-          matrix[y][x],
-        ] = [
-          matrix[y][x],
-          matrix[x][y],
-        ];
-      }
-    }
+                // --- 3. 壁の作成 ---
+                const wallOptions = { isStatic: true, render: { visible: false } };
+                World.add(world, [
+                    Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 30, GAME_WIDTH, 60, wallOptions), // 床
+                    Bodies.rectangle(-30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),         // 左壁
+                    Bodies.rectangle(GAME_WIDTH + 30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions) // 右壁
+                ]);
+                
+                // --- 4. ゲーム状態のリセット ---
+                score = 0;
+                timeLeft = GAME_TIME;
+                isGameOver = false;
+                isDragging = false;
+                currentChain = [];
+                lastTsum = null;
+                updateScore(0);
+                timerElement.textContent = timeLeft;
+                gameOverPanel.classList.add('hidden');
+                
+                // --- 5. 最初のツムを生成 ---
+                for (let i = 0; i < 25; i++) {
+                    setTimeout(() => addTsum(true), i * 50);
+                }
+                
+                // --- 6. 定期的な処理を開始 ---
+                // 既存のインターバルをクリア
+                if (addTsumInterval) clearInterval(addTsumInterval);
+                if (timerInterval) clearInterval(timerInterval);
 
-    if (dir > 0) {
-      matrix.forEach(row => row.reverse());
-    } else {
-      matrix.reverse();
-    }
-  }
+                setTimeout(() => {
+                    addTsumInterval = setInterval(() => addTsum(), 800);
+                    startTimer();
+                }, 2000);
 
-  function playerDrop() {
-    player.pos.y++;
-    if (collide(arena, player)) {
-      player.pos.y--;
-      merge(arena, player);
-      playerReset();
-      arenaSweep();
-    }
-    dropCounter = 0;
-  }
+                // --- 7. イベントリスナーのセットアップ ---
+                setupMouseEvents();
 
-  function playerMove(dir) {
-    player.pos.x += dir;
-    if (collide(arena, player)) {
-      player.pos.x -= dir;
-    }
-  }
+                // --- 8. ゲームループの開始 ---
+                requestAnimationFrame(gameLoop);
+            }
 
-  function playerReset() {
-    const pieces = 'ILJOTSZ';
-    player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
-    player.pos.y = 0;
-    player.pos.x = (arena[0].length / 2 | 0) -
-                   (player.matrix[0].length / 2 | 0);
+            // --- ツムを追加する関数 ---
+            function addTsum(isInitial = false) {
+                if (isGameOver || Composite.allBodies(world).length > 60) return;
 
-    if (collide(arena, player)) {
-      arena.forEach(row => row.fill(0));
-      player.score = 0;
-      updateScore();
-    }
-  }
+                const type = TSUM_TYPES[Math.floor(Math.random() * TSUM_TYPES.length)];
+                const x = isInitial ? Math.random() * (GAME_WIDTH - TSUM_RADIUS * 2) + TSUM_RADIUS : Math.random() * 100 + (GAME_WIDTH/2 - 50);
+                
+                const tsum = Bodies.circle(x, -30, TSUM_RADIUS, {
+                    restitution: 0.4,
+                    friction: 0.1,
+                    label: 'tsum',
+                    tsumData: type
+                });
+                World.add(world, tsum);
+            }
 
-  function arenaSweep() {
-    outer: for (let y = arena.length - 1; y > 0; --y) {
-      for (let x = 0; x < arena[y].length; ++x) {
-        if (arena[y][x] === 0) {
-          continue outer;
-        }
-      }
+            // --- マウスイベントの処理 ---
+            let isMouseSetup = false;
+            function setupMouseEvents() {
+                 if(isMouseSetup) return; // 重複登録を防ぐ
 
-      const row = arena.splice(y, 1)[0].fill(0);
-      arena.unshift(row);
-    }
-  }
+                const startHandler = (e) => {
+                    e.preventDefault();
+                    const event = e.touches ? e.touches[0] : e;
+                    handleDragStart(event);
+                };
+                const moveHandler = (e) => {
+                    e.preventDefault();
+                    const event = e.touches ? e.touches[0] : e;
+                    handleDragMove(event);
+                };
+                const endHandler = (e) => {
+                    e.preventDefault();
+                    handleDragEnd();
+                };
 
-  function drawMatrix(matrix, offset) {
-    matrix.forEach((row, y) => {
-      row.forEach((value, x) => {
-        if (value !== 0) {
-          context.fillStyle = colors[value];
-          context.fillRect(x + offset.x,
-                           y + offset.y,
-                           1, 1);
-        }
-      });
-    });
-  }
+                canvas.addEventListener('mousedown', startHandler);
+                canvas.addEventListener('mousemove', moveHandler);
+                window.addEventListener('mouseup', endHandler);
+                
+                canvas.addEventListener('touchstart', startHandler);
+                canvas.addEventListener('touchmove', moveHandler);
+                window.addEventListener('touchend', endHandler);
 
-  function draw() {
-    context.fillStyle = '#000';
-    context.fillRect(0, 0, canvas.width, canvas.height);
+                isMouseSetup = true;
+            }
 
-    drawMatrix(arena, {x: 0, y: 0});
-    drawMatrix(player.matrix, player.pos);
-  }
+            function getMousePos(event) {
+                const rect = canvas.getBoundingClientRect();
+                return {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top
+                };
+            }
 
-  function update(time = 0) {
-    const deltaTime = time - lastTime;
-    lastTime = time;
+            function handleDragStart(event) {
+                if (isGameOver) return;
+                const mousePos = getMousePos(event);
+                const bodies = Composite.allBodies(world);
+                const foundTsum = bodies.find(body => 
+                    body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, mousePos)) < TSUM_RADIUS
+                );
 
-    dropCounter += deltaTime;
-    if (dropCounter > dropInterval) {
-      playerDrop();
-    }
+                if (foundTsum) {
+                    isDragging = true;
+                    currentChain = [foundTsum];
+                    lastTsum = foundTsum;
+                }
+            }
 
-    draw();
-    requestAnimationFrame(update);
-  }
+            function handleDragMove(event) {
+                if (!isDragging) return;
+                const mousePos = getMousePos(event);
+                const bodies = Composite.allBodies(world);
+                const foundTsum = bodies.find(body => 
+                    body.label === 'tsum' && 
+                    !currentChain.includes(body) &&
+                    body.tsumData.id === lastTsum.tsumData.id &&
+                    Vector.magnitude(Vector.sub(body.position, lastTsum.position)) < TSUM_RADIUS * 2.5 &&
+                    Vector.magnitude(Vector.sub(body.position, mousePos)) < TSUM_RADIUS
+                );
 
-  function updateScore() {
-    document.getElementById('score').innerText = player.score;
-  }
+                if (foundTsum) {
+                    currentChain.push(foundTsum);
+                    lastTsum = foundTsum;
+                }
+            }
 
-  document.addEventListener('keydown', event => {
-    if (event.keyCode === 37) {
-      playerMove(-1);
-    } else if (event.keyCode === 39) {
-      playerMove(1);
-    } else if (event.keyCode === 40) {
-      playerDrop();
-    } else if (event.keyCode === 38) {
-      rotate(player.matrix, 1);
-    }
-  });
+            function handleDragEnd() {
+                if (!isDragging) return;
 
-  let dropCounter = 0;
-  let dropInterval = 1000;
-  let lastTime = 0;
+                if (currentChain.length >= 3) {
+                    let chainScore = 0;
+                    let baseScore = 0;
+                    currentChain.forEach((tsum, index) => {
+                        baseScore += tsum.tsumData.score;
+                        chainScore = baseScore * (1 + (index * 0.1));
+                        World.remove(world, tsum);
+                    });
+                    updateScore(Math.round(chainScore));
+                }
 
-  playerReset();
-  update();
-</script>
+                isDragging = false;
+                currentChain = [];
+                lastTsum = null;
+            }
 
+            // --- スコア更新 ---
+            function updateScore(points) {
+                score += points;
+                scoreElement.textContent = score;
+            }
+
+            // --- タイマー処理 ---
+            function startTimer() {
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerElement.textContent = timeLeft;
+                    if (timeLeft <= 0) {
+                        endGame();
+                    }
+                }, 1000);
+            }
+            
+            // --- ゲーム終了処理 ---
+            function endGame() {
+                clearInterval(timerInterval);
+                clearInterval(addTsumInterval);
+                isGameOver = true;
+                runner.enabled = false;
+                
+                finalScoreElement.textContent = score;
+                gameOverPanel.classList.remove('hidden');
+            }
+
+            // --- ゲームループ（描画処理） ---
+            function gameLoop() {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                const bodies = Composite.allBodies(world);
+
+                bodies.forEach(body => {
+                    if (body.label === 'tsum') {
+                        const { position, angle } = body;
+                        ctx.save();
+                        ctx.translate(position.x, position.y);
+                        ctx.rotate(angle);
+                        ctx.beginPath();
+                        ctx.arc(0, 0, TSUM_RADIUS, 0, 2 * Math.PI);
+                        
+                        // チェインに含まれているツムを少し光らせる
+                        if (currentChain.includes(body)) {
+                            ctx.fillStyle = 'white';
+                            ctx.fill();
+                            ctx.beginPath();
+                            ctx.arc(0, 0, TSUM_RADIUS * 0.9, 0, 2 * Math.PI);
+                        }
+
+                        ctx.fillStyle = body.tsumData.color;
+                        ctx.fill();
+                        ctx.strokeStyle = '#333';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                });
+
+                if (isDragging && currentChain.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(currentChain[0].position.x, currentChain[0].position.y);
+                    currentChain.forEach(tsum => {
+                        ctx.lineTo(tsum.position.x, tsum.position.y);
+                    });
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.lineWidth = 15;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.stroke();
+                }
+                
+                if (!isGameOver) {
+                    requestAnimationFrame(gameLoop);
+                }
+            }
+            
+            // --- リスタート処理 ---
+            restartButton.addEventListener('click', () => {
+                World.clear(world);
+                Engine.clear(engine);
+                initGame();
+            });
+
+            // --- ゲーム開始 ---
+            initGame();
+        });
+    </script>
 </body>
 </html>
