@@ -168,17 +168,17 @@
             function initGame() {
                 engine = Engine.create();
                 world = engine.world;
-                engine.gravity.y = 0;
+                engine.gravity.y = 0; // 無重力
 
                 runner = Runner.create();
                 Runner.run(runner, engine);
 
                 const wallOptions = { isStatic: true, render: { visible: false } };
                 World.add(world, [
-                    Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 30, GAME_WIDTH, 60, wallOptions),
-                    Bodies.rectangle(-30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),
-                    Bodies.rectangle(GAME_WIDTH + 30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),
-                    Bodies.rectangle(GAME_WIDTH / 2, -30, GAME_WIDTH, 60, wallOptions)
+                    Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 30, GAME_WIDTH, 60, wallOptions), // 床
+                    Bodies.rectangle(-30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),         // 左壁
+                    Bodies.rectangle(GAME_WIDTH + 30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions), // 右壁
+                    Bodies.rectangle(GAME_WIDTH / 2, -30, GAME_WIDTH, 60, wallOptions)          // 天井
                 ]);
                 
                 score = 0;
@@ -191,6 +191,7 @@
                 timerElement.textContent = timeLeft;
                 gameOverPanel.classList.add('hidden');
                 
+                // 最初のフルーツを生成
                 for (let i = 0; i < 70; i++) {
                     setTimeout(() => addTsum(true), i * 20);
                 }
@@ -198,6 +199,7 @@
                 if (addTsumInterval) clearInterval(addTsumInterval);
                 if (timerInterval) clearInterval(timerInterval);
 
+                // ゲーム開始
                 setTimeout(() => {
                     addTsumInterval = setInterval(addTsum, 500);
                     startTimer();
@@ -215,13 +217,27 @@
                 else if (rand < 0.06) type = FRUIT_TYPES.TIME;
                 else type = REGULAR_FRUITS[Math.floor(Math.random() * REGULAR_FRUITS.length)];
                 
-                const tsum = Bodies.circle(
-                    Math.random() * (GAME_WIDTH - TSUM_RADIUS * 4) + TSUM_RADIUS * 2,
-                    Math.random() * 100 - 150,
-                    TSUM_RADIUS, {
-                    restitution: 0.5, friction: 0.1, frictionAir: 0.05,
+                // ★★★ 修正点 ★★★
+                // 無重力で画面外に留まらないよう、生成位置を画面内に変更
+                const x = Math.random() * (GAME_WIDTH - TSUM_RADIUS * 2) + TSUM_RADIUS;
+                const y = isInitial ? (Math.random() * GAME_HEIGHT * 0.8) + (GAME_HEIGHT * 0.1) : -TSUM_RADIUS * 2;
+                
+                const tsum = Bodies.circle(x, y, TSUM_RADIUS, {
+                    restitution: 0.8, friction: 0.02, frictionAir: 0.01,
                     label: 'tsum', tsumData: type
                 });
+                
+                // ★★★ 修正点 ★★★
+                // 無重力なので、最初に少しだけランダムな力を与えて動きを出す
+                 if(isInitial) {
+                    Body.setVelocity(tsum, { 
+                        x: (Math.random() - 0.5) * 4, 
+                        y: (Math.random() - 0.5) * 4 
+                    });
+                 } else {
+                    Body.setVelocity(tsum, { x: 0, y: 2 }); // ゲーム中は上から少しだけ落ちてくる
+                 }
+
                 World.add(world, tsum);
             }
             
@@ -274,14 +290,14 @@
                     const pos = getEventPos(e);
                     const bodies = Composite.allBodies(world);
                     const clickedBomb = bodies.find(body => 
-                        body.label === 'tsum' && body.tsumData.isBomb && Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS
+                        body.label === 'tsum' && body.tsumData.isBomb && Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS * 1.5
                     );
                     if (clickedBomb) {
                         detonateBomb(clickedBomb);
                         return;
                     }
                     const foundTsum = bodies.find(body => 
-                        body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS
+                        body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS * 1.5
                     );
                     if (foundTsum) {
                         isDragging = true;
@@ -300,8 +316,8 @@
                         if (body.label !== 'tsum' || currentChain.includes(body)) return false;
                         const isConnectable = chainColorId === undefined || body.tsumData.id === chainColorId || body.tsumData.isRainbow;
                         return isConnectable &&
-                            Vector.magnitude(Vector.sub(body.position, lastTsumInChain.position)) < TSUM_RADIUS * 3 &&
-                            Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS * 1.5;
+                            Vector.magnitude(Vector.sub(body.position, lastTsumInChain.position)) < TSUM_RADIUS * 3.5 &&
+                            Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS * 2;
                     });
 
                     if (foundTsum) currentChain.push(foundTsum);
@@ -345,19 +361,19 @@
                 isMouseSetup = true;
             }
 
-            // ★修正点: ボムの処理をより安全な方式に変更
             function detonateBomb(bomb) {
                 if (!bomb || !bomb.position) return;
                 playPopSound();
-                const bombRadius = TSUM_RADIUS * 6;
+                const bombRadius = TSUM_RADIUS * 7;
                 const bodiesInWorld = Composite.allBodies(world);
                 const bodiesToRemove = [];
 
                 bodiesInWorld.forEach(body => {
-                    if (body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, bomb.position)) < bombRadius) {
+                    if (body.id !== bomb.id && body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, bomb.position)) < bombRadius) {
                         bodiesToRemove.push(body);
                     }
                 });
+                bodiesToRemove.push(bomb); // 爆弾自身も削除リストに
 
                 let bombScore = 0;
                 bodiesToRemove.forEach(body => {
@@ -374,8 +390,8 @@
                 Composite.allBodies(world).forEach(body => {
                     if (body.label === 'tsum') {
                         Body.applyForce(body, body.position, {
-                            x: (Math.random() - 0.5) * 0.05,
-                            y: (Math.random() - 0.5) * 0.05
+                            x: (Math.random() - 0.5) * 0.1,
+                            y: (Math.random() - 0.5) * 0.1
                         });
                     }
                 });
@@ -407,9 +423,8 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-                Composite.allBodies(world).forEach(body => {
-                    // ★修正点: 描画処理をtry...catchで囲み、エラーで全体が止まらないようにする
-                    try {
+                try {
+                    Composite.allBodies(world).forEach(body => {
                         if (body.label === 'tsum' && body.tsumData) {
                             const { position, angle } = body;
                             const tsumData = body.tsumData;
@@ -432,7 +447,7 @@
                             
                             if (tsumData.isBomb) {
                                 ctx.fillStyle = 'white';
-                                ctx.font = `${TSUM_RADIUS}px sans-serif`;
+                                ctx.font = `${TSUM_RADIUS * 1.2}px sans-serif`;
                                 ctx.textAlign = 'center';
                                 ctx.textBaseline = 'middle';
                                 ctx.fillText('B', 0, 1);
@@ -443,27 +458,27 @@
                             }
                             ctx.restore();
                         }
-                    } catch (e) {
-                        console.error("Error drawing body:", body, e);
+                    });
+                    
+                    ctx.globalCompositeOperation = 'lighter';
+                    for (let i = particles.length - 1; i >= 0; i--) {
+                        const p = particles[i];
+                        p.x += p.vx; p.y += p.vy; p.lifespan--;
+                        if (p.lifespan <= 0) {
+                            particles.splice(i, 1);
+                            continue;
+                        }
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, Math.max(0, p.lifespan / 10), 0, 2 * Math.PI);
+                        ctx.fillStyle = p.color || 'white';
+                        ctx.globalAlpha = Math.max(0, p.lifespan / 50);
+                        ctx.fill();
                     }
-                });
-                
-                ctx.globalCompositeOperation = 'lighter';
-                for (let i = particles.length - 1; i >= 0; i--) {
-                    const p = particles[i];
-                    p.x += p.vx; p.y += p.vy; p.lifespan--;
-                    if (p.lifespan <= 0) {
-                        particles.splice(i, 1);
-                        continue;
-                    }
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, Math.max(0, p.lifespan / 10), 0, 2 * Math.PI);
-                    ctx.fillStyle = p.color;
-                    ctx.globalAlpha = Math.max(0, p.lifespan / 50);
-                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    ctx.globalCompositeOperation = 'source-over';
+                } catch (e) {
+                    // console.error("Error in game loop:", e);
                 }
-                ctx.globalAlpha = 1.0;
-                ctx.globalCompositeOperation = 'source-over';
 
                 if (!isGameOver) {
                     requestAnimationFrame(gameLoop);
