@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カスタム・フルーツゲーム</title>
+    <title>シンプルゲーム</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -13,104 +13,33 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #1a1a2e;
-            color: #e0e0e0;
-        }
-        h1 {
-            color: #f0f0f0;
-            margin-bottom: 10px;
-            text-shadow: 0 0 5px #00aaff;
+            background-color: #f0f8ff;
         }
         #game-container {
-            position: relative;
-            border: 2px solid #00aaff;
-            box-shadow: 0 0 20px rgba(0, 170, 255, 0.5);
-            background-color: #0f0f1a;
-        }
-        #game-canvas {
-            display: block;
-            background-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1171&q=80');
-            background-size: cover;
-            background-position: center;
+            border: 2px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         #info-panel {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 5px 20px;
-            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            background-color: #333;
             color: white;
             font-weight: bold;
         }
-        #shuffle-button {
-            padding: 8px 15px;
-            font-size: 0.9em;
-            cursor: pointer;
-            border: 1px solid #00aaff;
-            border-radius: 5px;
-            background-color: rgba(0, 170, 255, 0.3);
-            color: white;
-            transition: background-color 0.3s;
-        }
-        #shuffle-button:hover {
-            background-color: rgba(0, 170, 255, 0.6);
-        }
-        .info-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .info-box .label {
-            font-size: 0.8em;
-            color: #aaa;
-        }
-        .info-box span {
-            font-size: 1.5em;
-        }
-        #game-over-panel {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 40px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            z-index: 100;
-        }
-        #game-over-panel h2 {
-            margin-top: 0;
-            font-size: 2.5em;
-        }
-        #restart-button {
-            padding: 10px 20px;
-            font-size: 1.2em;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            background-color: #ff9800;
-            color: white;
-            transition: background-color 0.3s;
-        }
-        #restart-button:hover {
-            background-color: #f57c00;
-        }
-        .hidden {
-            display: none;
-        }
+        .info-box { text-align: center; }
+        .info-box .label { font-size: 0.8em; color: #aaa; }
+        .info-box span { font-size: 1.5em; }
     </style>
 </head>
 <body>
-    <h1>カスタム・フルーツゲーム</h1>
+    <h1>シンプルゲーム</h1>
     <div id="game-container">
         <div id="info-panel">
             <div class="info-box">
                 <span class="label">SCORE</span>
                 <span id="score">0</span>
             </div>
-            <button id="shuffle-button">シャッフル</button>
             <div class="info-box">
                 <span class="label">TIME</span>
                 <span id="timer">60</span>
@@ -119,146 +48,93 @@
         <canvas id="game-canvas"></canvas>
     </div>
 
-    <div id="game-over-panel" class="hidden">
-        <h2>TIME UP!</h2>
-        <p>Your Score: <span id="final-score">0</span></p>
-        <button id="restart-button">もう一度遊ぶ</button>
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.18.0/matter.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const { Engine, Runner, World, Bodies, Composite, Body, Vector } = Matter;
+            const { Engine, Runner, World, Bodies, Composite, Vector } = Matter;
 
-            const GAME_WIDTH = 450;
-            const GAME_HEIGHT = 700;
-            const TSUM_RADIUS = 12.5; 
+            const GAME_WIDTH = 400;
+            const GAME_HEIGHT = 600;
+            const TSUM_RADIUS = 22;
             const GAME_TIME = 60;
 
             const canvas = document.getElementById('game-canvas');
             const scoreElement = document.getElementById('score');
             const timerElement = document.getElementById('timer');
-            const gameOverPanel = document.getElementById('game-over-panel');
-            const finalScoreElement = document.getElementById('final-score');
-            const restartButton = document.getElementById('restart-button');
-            const shuffleButton = document.getElementById('shuffle-button');
             canvas.width = GAME_WIDTH;
             canvas.height = GAME_HEIGHT;
 
-            const FRUIT_TYPES = {
-                APPLE: { id: 1, color: '#e60012', name: 'りんご', score: 100 },
-                ORANGE: { id: 2, color: '#f39800', name: 'みかん', score: 120 },
-                GRAPE: { id: 3, color: '#662d91', name: 'ぶどう', score: 140 },
-                LEMON: { id: 4, color: '#fff100', name: 'レモン', score: 110 },
-                MELON: { id: 5, color: '#8fc31f', name: 'メロン', score: 150 },
-                RAINBOW: { id: 99, name: 'レインボー', isRainbow: true, score: 200 },
-                TIME: { id: 98, name: 'タイム', isTime: true, score: 500, color: '#ffd700' },
-                BOMB: { id: 97, name: 'ボム', isBomb: true, score: 0, color: '#333333' }
-            };
-            const REGULAR_FRUITS = Object.values(FRUIT_TYPES).filter(f => !f.isRainbow && !f.isTime && !f.isBomb);
+            // シンプルな色のツムだけを定義
+            const TSUM_TYPES = [
+                { id: 1, color: '#e60012', score: 100 },
+                { id: 2, color: '#f39800', score: 120 },
+                { id: 3, color: '#009e96', score: 140 },
+                { id: 4, color: '#fff100', score: 110 },
+                { id: 5, color: '#8f4e27', score: 150 },
+            ];
 
             let engine, world, runner;
             let score, timeLeft, timerInterval, addTsumInterval;
             let isDragging = false;
             let currentChain = [];
             let isGameOver = false;
-            let particles = [];
-            let audioCtx;
 
             function initGame() {
                 engine = Engine.create();
                 world = engine.world;
-                engine.gravity.y = 0;
+                // ★★★ 修正点 ★★★
+                // 重力を元に戻す
+                engine.gravity.y = 1;
 
                 runner = Runner.create();
                 Runner.run(runner, engine);
 
                 const wallOptions = { isStatic: true, render: { visible: false } };
                 World.add(world, [
-                    Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 30, GAME_WIDTH, 60, wallOptions),
-                    Bodies.rectangle(-30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),
-                    Bodies.rectangle(GAME_WIDTH + 30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),
-                    Bodies.rectangle(GAME_WIDTH / 2, -30, GAME_WIDTH, 60, wallOptions)
+                    Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 30, GAME_WIDTH, 60, wallOptions), // 床
+                    Bodies.rectangle(-30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions),       // 左壁
+                    Bodies.rectangle(GAME_WIDTH + 30, GAME_HEIGHT / 2, 60, GAME_HEIGHT, wallOptions) // 右壁
                 ]);
                 
                 score = 0; timeLeft = GAME_TIME; isGameOver = false; isDragging = false;
-                currentChain = []; particles = [];
+                currentChain = [];
                 updateScore(0);
                 timerElement.textContent = timeLeft;
-                gameOverPanel.classList.add('hidden');
                 
-                for (let i = 0; i < 70; i++) {
-                    setTimeout(() => addTsum(true), i * 20);
+                for (let i = 0; i < 30; i++) {
+                    addTsum();
                 }
                 
                 if (addTsumInterval) clearInterval(addTsumInterval);
                 if (timerInterval) clearInterval(timerInterval);
 
                 setTimeout(() => {
-                    addTsumInterval = setInterval(addTsum, 500);
+                    addTsumInterval = setInterval(addTsum, 800);
                     startTimer();
-                }, 3000);
+                }, 2000);
 
                 setupMouseEvents();
                 requestAnimationFrame(gameLoop);
             }
 
-            function addTsum(isInitial = false) {
-                if (isGameOver || Composite.allBodies(world).length > 150) return;
-                let type;
-                const rand = Math.random();
-                if (rand < 0.03) type = FRUIT_TYPES.RAINBOW;
-                else if (rand < 0.06) type = FRUIT_TYPES.TIME;
-                else type = REGULAR_FRUITS[Math.floor(Math.random() * REGULAR_FRUITS.length)];
+            function addTsum() {
+                if (isGameOver || Composite.allBodies(world).length > 80) return;
                 
-                const x = Math.random() * (GAME_WIDTH - TSUM_RADIUS * 2) + TSUM_RADIUS;
-                const y = isInitial ? (Math.random() * GAME_HEIGHT * 0.8) + (GAME_HEIGHT * 0.1) : -TSUM_RADIUS * 2;
-                
-                const tsum = Bodies.circle(x, y, TSUM_RADIUS, {
-                    restitution: 0.8, friction: 0.02, frictionAir: 0.01,
+                const type = TSUM_TYPES[Math.floor(Math.random() * TSUM_TYPES.length)];
+                const tsum = Bodies.circle(
+                    // 画面中央の上部から出現
+                    GAME_WIDTH / 2 + (Math.random() - 0.5) * 50, -30,
+                    TSUM_RADIUS, {
+                    restitution: 0.3, friction: 0.2,
                     label: 'tsum', tsumData: type
                 });
-                
-                 if(isInitial) {
-                    Body.setVelocity(tsum, { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 });
-                 } else {
-                    Body.setVelocity(tsum, { x: 0, y: 2 });
-                 }
-
                 World.add(world, tsum);
             }
             
-            function setupAudio() {
-                if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            }
-
-            function playPopSound() {
-                if (!audioCtx) return;
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-                oscillator.start(audioCtx.currentTime);
-                oscillator.stop(audioCtx.currentTime + 0.2);
-            }
-            
-            function createParticles(x, y, color) {
-                for (let i = 0; i < 10; i++) {
-                    particles.push({ x, y,
-                        vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
-                        lifespan: 50, color });
-                }
-            }
-
             let isMouseSetup = false;
             function setupMouseEvents() {
                 if(isMouseSetup) return;
+                
                 const getEventPos = e => {
                     const rect = canvas.getBoundingClientRect();
                     const evt = e.touches ? e.touches[0] : e;
@@ -266,37 +142,26 @@
                 };
                 
                 // ★★★ 修正点 ★★★
-                // クリック/タッチ開始の処理を、よりシンプルで確実なものに再構築
+                // クリック/タッチ開始の処理を、最もシンプルで確実な形に修正
                 const handleStart = e => {
                     e.preventDefault();
-                    setupAudio();
                     if (isGameOver) return;
                     
                     const pos = getEventPos(e);
                     const bodies = Composite.allBodies(world);
                     
-                    // クリックされた位置に最も近いフルーツを探す
-                    let closestTsum = null;
-                    let minDistance = Infinity;
+                    // クリックされた位置にあるツムを探す
+                    const foundTsum = bodies.find(body => {
+                        if (body.label !== 'tsum') return false;
+                        const distance = Vector.magnitude(Vector.sub(body.position, pos));
+                        // クリック判定を少し甘くする（半径の1.5倍までOK）
+                        return distance < TSUM_RADIUS * 1.5;
+                    });
 
-                    for (const body of bodies) {
-                        if (body.label === 'tsum') {
-                            const distance = Vector.magnitude(Vector.sub(body.position, pos));
-                            if (distance < minDistance) {
-                                minDistance = distance;
-                                closestTsum = body;
-                            }
-                        }
-                    }
-
-                    // 最も近いフルーツが、クリック可能な範囲（半径の1.5倍）にあれば処理を開始
-                    if (closestTsum && minDistance < TSUM_RADIUS * 1.5) {
-                        if (closestTsum.tsumData.isBomb) {
-                            detonateBomb(closestTsum);
-                        } else {
-                            isDragging = true;
-                            currentChain = [closestTsum];
-                        }
+                    // 見つかったらドラッグ開始
+                    if (foundTsum) {
+                        isDragging = true;
+                        currentChain = [foundTsum];
                     }
                 };
 
@@ -305,78 +170,39 @@
                     if (!isDragging || currentChain.length === 0) return;
                     const pos = getEventPos(e);
                     const lastTsumInChain = currentChain[currentChain.length-1];
-                    const chainColorId = currentChain.find(t => !t.tsumData.isRainbow)?.tsumData.id;
                     const foundTsum = Composite.allBodies(world).find(body => {
                         if (body.label !== 'tsum' || currentChain.includes(body)) return false;
-                        const isConnectable = chainColorId === undefined || body.tsumData.id === chainColorId || body.tsumData.isRainbow;
-                        return isConnectable &&
+                        // 同じ種類で、近すぎず離れすぎていないツムを探す
+                        return body.tsumData.id === lastTsumInChain.tsumData.id &&
                             Vector.magnitude(Vector.sub(body.position, lastTsumInChain.position)) < TSUM_RADIUS * 3.5 &&
                             Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS * 2;
                     });
                     if (foundTsum) currentChain.push(foundTsum);
                 };
+
                 const handleEnd = e => {
                     e.preventDefault();
                     if (!isDragging) return;
-                    if (currentChain.length >= 5) {
-                        playPopSound();
-                        let chainScore = 0, baseScore = 0, timeToAdd = 0;
-                        const shouldCreateBomb = currentChain.length >= 7;
-                        const bombTsum = shouldCreateBomb ? currentChain[currentChain.length-1] : null;
-                        currentChain.forEach((tsum, index) => {
-                            if (tsum === bombTsum) return;
-                            baseScore += tsum.tsumData.score;
-                            chainScore = baseScore * (1 + (index * 0.1));
-                            if (tsum.tsumData.isTime) timeToAdd += 3;
-                            createParticles(tsum.position.x, tsum.position.y, tsum.tsumData.color || 'white');
+                    // 3つ以上つながっていたら消す
+                    if (currentChain.length >= 3) {
+                        let chainScore = 0;
+                        currentChain.forEach(tsum => {
+                            chainScore += tsum.tsumData.score;
                             World.remove(world, tsum);
                         });
-                        if (shouldCreateBomb) bombTsum.tsumData = FRUIT_TYPES.BOMB;
-                        updateScore(Math.round(chainScore));
-                        timeLeft += timeToAdd;
+                        updateScore(chainScore * currentChain.length); // チェイン数でスコアボーナス
                     }
                     isDragging = false;
                     currentChain = [];
                 };
+
                 canvas.addEventListener('mousedown', handleStart);
                 canvas.addEventListener('mousemove', handleMove);
                 window.addEventListener('mouseup', handleEnd);
                 canvas.addEventListener('touchstart', handleStart, { passive: false });
                 canvas.addEventListener('touchmove', handleMove, { passive: false });
                 window.addEventListener('touchend', handleEnd);
-                shuffleButton.addEventListener('click', shuffleTsums);
                 isMouseSetup = true;
-            }
-
-            function detonateBomb(bomb) {
-                if (!bomb || !bomb.position) return;
-                playPopSound();
-                const bombRadius = TSUM_RADIUS * 7;
-                const bodiesToRemove = [];
-                Composite.allBodies(world).forEach(body => {
-                    if (body.id !== bomb.id && body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, bomb.position)) < bombRadius) {
-                        bodiesToRemove.push(body);
-                    }
-                });
-                bodiesToRemove.push(bomb);
-                let bombScore = 0;
-                bodiesToRemove.forEach(body => {
-                    bombScore += body.tsumData.score;
-                    createParticles(body.position.x, body.position.y, body.tsumData.color || 'white');
-                    World.remove(world, body);
-                });
-                updateScore(bombScore * 2);
-            }
-
-            function shuffleTsums() {
-                if (isGameOver) return;
-                Composite.allBodies(world).forEach(body => {
-                    if (body.label === 'tsum') {
-                        Body.applyForce(body, body.position, {
-                            x: (Math.random() - 0.5) * 0.1, y: (Math.random() - 0.5) * 0.1
-                        });
-                    }
-                });
             }
 
             function updateScore(points) { score += points; scoreElement.textContent = score; }
@@ -394,76 +220,50 @@
                 clearInterval(addTsumInterval);
                 isGameOver = true;
                 if (runner) runner.enabled = false;
-                finalScoreElement.textContent = score;
-                gameOverPanel.classList.remove('hidden');
             }
 
             function gameLoop() {
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-                try {
-                    const bodies = Composite.allBodies(world);
-                    for (const body of bodies) {
-                        if (body.label === 'tsum' && body.tsumData && body.position && !isNaN(body.position.x) && !isNaN(body.position.y) && !isNaN(body.angle)) {
-                            const { position, angle, tsumData } = body;
-                            ctx.save();
-                            ctx.translate(position.x, position.y);
-                            ctx.rotate(angle);
-                            ctx.beginPath();
-                            ctx.arc(0, 0, TSUM_RADIUS, 0, 2 * Math.PI);
-                            if (tsumData.isRainbow) {
-                                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, TSUM_RADIUS);
-                                ['red','orange','yellow','green','blue','purple'].forEach((color, i) => {
-                                    gradient.addColorStop(i / 5, color);
-                                });
-                                ctx.fillStyle = gradient;
-                            } else {
-                                ctx.fillStyle = tsumData.color;
-                            }
-                            ctx.fill();
-                            if (tsumData.isBomb) {
-                                ctx.fillStyle = 'white';
-                                ctx.font = `${TSUM_RADIUS * 1.2}px sans-serif`;
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillText('B', 0, 1);
-                            } else if (tsumData.isTime) {
-                                ctx.strokeStyle = 'black';
-                                ctx.lineWidth = 1.5;
-                                ctx.stroke();
-                            }
-                            ctx.restore();
-                        }
-                    }
-                    ctx.globalCompositeOperation = 'lighter';
-                    for (let i = particles.length - 1; i >= 0; i--) {
-                        const p = particles[i];
-                        p.x += p.vx; p.y += p.vy; p.lifespan--;
-                        if (p.lifespan <= 0) {
-                            particles.splice(i, 1);
-                            continue;
-                        }
+                ctx.fillStyle = '#e3f2fd';
+                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                const bodies = Composite.allBodies(world);
+                for (const body of bodies) {
+                    if (body.label === 'tsum' && body.position && !isNaN(body.position.x)) {
+                        const { position, angle, tsumData } = body;
+                        ctx.save();
+                        ctx.translate(position.x, position.y);
+                        ctx.rotate(angle);
                         ctx.beginPath();
-                        ctx.arc(p.x, p.y, Math.max(0, p.lifespan / 10), 0, 2 * Math.PI);
-                        ctx.fillStyle = p.color || 'white';
-                        ctx.globalAlpha = Math.max(0, p.lifespan / 50);
+                        ctx.arc(0, 0, TSUM_RADIUS, 0, 2 * Math.PI);
+                        ctx.fillStyle = tsumData.color;
                         ctx.fill();
+                        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        ctx.restore();
                     }
-                    ctx.globalAlpha = 1.0;
-                    ctx.globalCompositeOperation = 'source-over';
-                } catch (e) {}
+                }
+                
+                // つないでいる線を描画
+                if (isDragging && currentChain.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(currentChain[0].position.x, currentChain[0].position.y);
+                    for (let i = 1; i < currentChain.length; i++) {
+                        ctx.lineTo(currentChain[i].position.x, currentChain[i].position.y);
+                    }
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.lineWidth = 10;
+                    ctx.stroke();
+                }
+
                 if (!isGameOver) {
                     requestAnimationFrame(gameLoop);
                 }
             }
             
-            restartButton.addEventListener('click', () => {
-                if (runner) Runner.stop(runner);
-                World.clear(world);
-                Engine.clear(engine);
-                initGame();
-            });
-
+            // ゲーム開始
             initGame();
         });
     </script>
