@@ -168,7 +168,7 @@
             function initGame() {
                 engine = Engine.create();
                 world = engine.world;
-                engine.gravity.y = 0; // 無重力
+                engine.gravity.y = 0;
 
                 runner = Runner.create();
                 Runner.run(runner, engine);
@@ -250,13 +250,9 @@
             
             function createParticles(x, y, color) {
                 for (let i = 0; i < 10; i++) {
-                    particles.push({
-                        x, y,
-                        vx: (Math.random() - 0.5) * 4,
-                        vy: (Math.random() - 0.5) * 4,
-                        lifespan: 50,
-                        color
-                    });
+                    particles.push({ x, y,
+                        vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
+                        lifespan: 50, color });
                 }
             }
 
@@ -268,27 +264,42 @@
                     const evt = e.touches ? e.touches[0] : e;
                     return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
                 };
+                
+                // ★★★ 修正点 ★★★
+                // クリック/タッチ開始の処理を、よりシンプルで確実なものに再構築
                 const handleStart = e => {
                     e.preventDefault();
                     setupAudio();
                     if (isGameOver) return;
+                    
                     const pos = getEventPos(e);
                     const bodies = Composite.allBodies(world);
-                    const clickedBomb = bodies.find(body => 
-                        body.label === 'tsum' && body.tsumData.isBomb && Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS * 1.5
-                    );
-                    if (clickedBomb) {
-                        detonateBomb(clickedBomb);
-                        return;
+                    
+                    // クリックされた位置に最も近いフルーツを探す
+                    let closestTsum = null;
+                    let minDistance = Infinity;
+
+                    for (const body of bodies) {
+                        if (body.label === 'tsum') {
+                            const distance = Vector.magnitude(Vector.sub(body.position, pos));
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                closestTsum = body;
+                            }
+                        }
                     }
-                    const foundTsum = bodies.find(body => 
-                        body.label === 'tsum' && Vector.magnitude(Vector.sub(body.position, pos)) < TSUM_RADIUS * 1.5
-                    );
-                    if (foundTsum) {
-                        isDragging = true;
-                        currentChain = [foundTsum];
+
+                    // 最も近いフルーツが、クリック可能な範囲（半径の1.5倍）にあれば処理を開始
+                    if (closestTsum && minDistance < TSUM_RADIUS * 1.5) {
+                        if (closestTsum.tsumData.isBomb) {
+                            detonateBomb(closestTsum);
+                        } else {
+                            isDragging = true;
+                            currentChain = [closestTsum];
+                        }
                     }
                 };
+
                 const handleMove = e => {
                     e.preventDefault();
                     if (!isDragging || currentChain.length === 0) return;
@@ -390,12 +401,9 @@
             function gameLoop() {
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
                 try {
                     const bodies = Composite.allBodies(world);
                     for (const body of bodies) {
-                        // ★★★ 修正点 ★★★
-                        // 描画前に、オブジェクトとその位置情報が有効か（NaNでないか）を厳重にチェック
                         if (body.label === 'tsum' && body.tsumData && body.position && !isNaN(body.position.x) && !isNaN(body.position.y) && !isNaN(body.angle)) {
                             const { position, angle, tsumData } = body;
                             ctx.save();
@@ -403,7 +411,6 @@
                             ctx.rotate(angle);
                             ctx.beginPath();
                             ctx.arc(0, 0, TSUM_RADIUS, 0, 2 * Math.PI);
-                            
                             if (tsumData.isRainbow) {
                                 const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, TSUM_RADIUS);
                                 ['red','orange','yellow','green','blue','purple'].forEach((color, i) => {
@@ -414,7 +421,6 @@
                                 ctx.fillStyle = tsumData.color;
                             }
                             ctx.fill();
-                            
                             if (tsumData.isBomb) {
                                 ctx.fillStyle = 'white';
                                 ctx.font = `${TSUM_RADIUS * 1.2}px sans-serif`;
@@ -429,7 +435,6 @@
                             ctx.restore();
                         }
                     }
-                    
                     ctx.globalCompositeOperation = 'lighter';
                     for (let i = particles.length - 1; i >= 0; i--) {
                         const p = particles[i];
@@ -446,10 +451,7 @@
                     }
                     ctx.globalAlpha = 1.0;
                     ctx.globalCompositeOperation = 'source-over';
-                } catch (e) {
-                    // 念のためエラーキャッチを残す
-                }
-
+                } catch (e) {}
                 if (!isGameOver) {
                     requestAnimationFrame(gameLoop);
                 }
