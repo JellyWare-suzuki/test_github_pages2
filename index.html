@@ -1,479 +1,839 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>テトリス - ジャパンスタイル</title>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      text-align: center;
-      background-color: #111;
-      color: #fff;
-      margin: 0;
-      padding: 20px;
-    }
-    #game-container {
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-      align-items: flex-start;
-      max-width: 100%;
-      padding: 20px;
-    }
-    #game-board {
-      border: 2px solid #444;
-      background-color: #000;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      width: 300px;
-      height: 600px;
-      position: relative;
-    }
-    #next-piece {
-      width: 100px;
-      height: 100px;
-      border: 1px solid #444;
-      background-color: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 10px;
-    }
-    #score-board {
-      font-size: 24px;
-      margin: 10px;
-    }
-    #controls {
-      margin-top: 20px;
-      color: #ccc;
-    }
-    #game-over {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0,0,0,0.8);
-      padding: 30px;
-      border-radius: 15px;
-      color: red;
-      font-size: 24px;
-      display: none;
-    }
-    #game-over button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 18px;
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    #game-over button:hover {
-      background-color: #0056b3;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テトリスゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #222;
+            color: white;
+            padding: 20px;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            color: #ff6d5c;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .instructions {
+            background-color: #333;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+        
+        .game-area {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            width: 100%;
+        }
+        
+        .tetris-board {
+            background-color: #36465c;
+            border: 3px solid #555;
+            position: relative;
+            display: block;
+        }
+        
+        .game-info {
+            flex: 1;
+            max-width: 200px;
+            padding: 15px;
+            background-color: #333;
+            border-radius: 10px;
+            min-width: 180px;
+        }
+        
+        canvas {
+            display: block;
+            background-color: rgba(0, 0, 0, 0.9);
+            border-radius: 5px;
+        }
+        
+        .score-display {
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        #next-piece-canvas {
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            width: 100%;
+            max-height: 120px;
+        }
+        
+        .controls {
+            margin-top: 15px;
+            text-align: center;
+            color: #ff6d5c;
+            font-weight: bold;
+        }
+        
+        button {
+            background-color: #ff6d5c;
+            border: none;
+            padding: 8px 20px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #ff573f;
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 32px;
+        }
+        
+        @media (max-width: 650px) {
+            .game-area {
+                flex-direction: column;
+            }
+            
+            .game-info {
+                width: 100%;
+                max-width: none;
+            }
+        }
+
+        /* エディタ用CSS */
+        #editor-container {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px solid #6c757d;
+            border-radius: 10px;
+            background-color: #49596a;
+            display: flex;
+            gap: 20px;
+        }
+        
+        .editor-box {
+            flex-basis: calc(50% - 30px);
+        }
+        
+        .editor-title {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #ff6d5c;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            background-color: #343a40;
+            border-radius: 5px;
+            font-family: monospace;
+            color: white;
+            resize: none;
+        }
+        
+        .editor-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+    </style>
 </head>
 <body>
-  <h1>🎮 テトリス（日本風）</h1>
-  <div id="game-container">
-    <div id="game-board"></div>
-    <div>
-      <div id="score-board">スコア: 0</div>
-      <div id="next-piece">次：□</div>
-      <div id="controls">
-        ← → ↑ ↓：移動・回転・降下<br>
-        スペース：急降下<br>
-        キャンセル：ゲームリセット
-      </div>
+    <div class="game-container">
+        <header>
+            <h1>テトリス</h1>
+        </header>
+
+        <main>
+            <div class="instructions">
+                <p><strong>遊び方:</strong></p>
+                <ul>
+                    <li><strong>左矢印</strong>: ブロックを左に移動</li>
+                    <li><strong>右矢印</strong>: ブロックを右に移動</li>
+                    <li><strong>下矢印</strong>: ブロックを速降させる</li>
+                    <li><strong>上矢印</strong>: テトリミノを90度回転</li>
+                </ul>
+                <p><strong>目標:</strong> なるべく高いスコアを目指して！</p>
+            </div>
+
+            <div class="game-area">
+                <canvas id="tetris" width="300" height="600"></canvas>
+                
+                <section class="game-info">
+                    <h2>ゲーム情報</h2>
+                    <p>現在のスコア: <span id="score">0</span></p>
+                    <p>最長記録: <span id="high-score">0</span></p>
+                    
+                    <canvas id="next-piece-canvas" width="150" height="150"></canvas>
+                    
+                    <div class="controls">
+                        <button id="start-button">ゲームを開始</button>
+                        <button id="pause-button">一時停止</button>
+                        <br>
+                        <p>SPACEキーで消去</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- エディタ部分 -->
+            <div id="editor-container" style="display: none;">
+                <h2 class="editor-title">テトリスのカスタマイズ</h2>
+                
+                <div class="editor-box">
+                    <p>ボードサイズ変更:</p>
+                    <textarea id="board-config">{
+  "width": 10,
+  "height": 20
+}</textarea>
+                </div>
+                
+                <div class="editor-box">
+                    <p>ブロックの色情報:</p>
+                    <textarea id="tetromino-colors">{
+  "I": "#00FFFF",
+  "O": "#FFFF00",
+  "T": "#9400D3",
+  "S": "#00FF00",
+  "Z": "#FF0000",
+  "J": "#0000FF",
+  "L": "#FF7F00"
+}</textarea>
+                </p>
+                
+                <div class="editor-buttons">
+                    <button id="save-config">設定を保存</button>
+                    <button id="load-config">設定を読み込む</button>
+                    <button id="reset-editor">元に戻る</button>
+                </div>
+            </div>
+        </main>
     </div>
-  </div>
 
-  <div id="game-over">
-    ゲームオーバー！<br>
-    <button onclick="restartGame()">再スタート</button>
-  </div>
-
-  <script>
-    // ゲームの設定
-    const COLS = 10;
-    const ROWS = 20;
-    const BLOCK_SIZE = 30;
-    const COLORS = [
-      null,
-      '#FF0D00', // I
-      '#00FF0D', // J
-      '#0000FF', // L
-      '#FFD700', // O
-      '#FF00FF', // S
-      '#00FFFF', // T
-      '#FF69B4'  // Z
-    ];
-
-    // ブロックの形状（各形は、配列で定義）
-    const SHAPES = [
-      null,
-      [[1,1,1,1]], // I
-      [[1,0,0],[1,1,1]], // J
-      [[0,0,1],[1,1,1]], // L
-      [[1,1],[1,1]], // O
-      [[0,1,1],[1,1,0]], // S
-      [[1,1,0],[0,1,1]], // T
-      [[0,1,1],[1,1,0]]  // Z
-    ];
-
-    // ゲームボード
-    let board = createBoard();
-    let currentPiece = null;
-    let nextPiece = null;
-    let score = 0;
-    let gameOver = false;
-    let dropInterval = 1000; // ドロップ間隔（ミリ秒）
-    let dropCounter = 0;
-    let lastTime = 0;
-
-    // ボードの初期化
-    function createBoard() {
-      return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-    }
-
-    // ブロックの描画
-    function drawBoard() {
-      const boardEl = document.getElementById('game-board');
-      boardEl.innerHTML = '';
-
-      for (let row = 0; row < ROWS; row++) {
-        for (let col = 0; col < COLS; col++) {
-          const cell = document.createElement('div');
-          cell.style.width = BLOCK_SIZE + 'px';
-          cell.style.height = BLOCK_SIZE + 'px';
-          cell.style.position = 'absolute';
-          cell.style.left = col * BLOCK_SIZE + 'px';
-          cell.style.top = row * BLOCK_SIZE + 'px';
-          cell.style.backgroundColor = board[row][col] ? COLORS[board[row][col]] : 'transparent';
-          boardEl.appendChild(cell);
+    <script>
+        // テトリスの基本構成
+        const canvas = document.getElementById('tetris');
+        const ctx = canvas.getContext('2d');
+        const nextPieceCanvas = document.createElement('canvas').getContext('2d');
+        
+        // キャンバスサイズを設定
+        let CELL_SIZE = 30;
+        if (window.innerWidth < 480) {
+            CELL_SIZE = Math.floor(window.innerHeight / 65);
         }
-      }
-
-      // 現在のブロックの描画
-      if (currentPiece) {
-        drawPiece(currentPiece, currentPiece.row, currentPiece.col);
-      }
-    }
-
-    // ブロックの描画（現在）
-    function drawPiece(piece, row, col) {
-      const boardEl = document.getElementById('game-board');
-      const cells = piece.shape.map((row, r) => 
-        row.map((cell, c) => 
-          cell ? 
-            { row: r + row, col: c + col } : null
-        ).filter(Boolean)
-      ).flat();
-
-      cells.forEach(({ row, col }) => {
-        if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
-          const cell = document.createElement('div');
-          cell.style.width = BLOCK_SIZE + 'px';
-          cell.style.height = BLOCK_SIZE + 'px';
-          cell.style.position = 'absolute';
-          cell.style.left = col * BLOCK_SIZE + 'px';
-          cell.style.top = row * BLOCK_SIZE + 'px';
-          cell.style.backgroundColor = COLORS[piece.color];
-          boardEl.appendChild(cell);
+        canvas.width = 10 * CELL_SIZE + 7; // ボードの幅と余白
+        canvas.height = 20 * CELL_SIZE + 7; // ボードの高さと余白
+        
+        nextPieceCanvas.canvas.width = (4 * CELL_SIZE) / 2;
+        nextPieceCanvas.canvas.height = (4 * CELL_SIZE);
+        
+        const BLOCK_WIDTH = CELL_SIZE - 1;
+        const BLOCK_HEIGHT = CELL_SIZE - 1;
+        
+        // ゲーム状態
+        let scoreElement, highScoreElement, startButton, pauseButton;
+        let board = []; // ボードの状態を保持する配列
+        let currentPiece; // 現在のテトリミノ
+        let nextPiece;    // 次のテトリミノ
+        let isPlaying = false;
+        let gameOverCellCount = 0;
+        
+        // カラーマップ（ブロックタイプと色を対応させる）
+        const COLORS = {
+            'I': '#00FFFF',
+            'O': '#FFFF00',
+            'T': '#9400D3',
+            'S': '#00FF00',
+            'Z': '#FF0000',
+            'J': '#0000FF',
+            'L': '#FF7F00'
+        };
+        
+        // テトリミノの形状を定義
+        const SHAPES = {
+            'I': [
+                [1, 1, 1, 1],
+            ],
+            
+            'O': [
+                [1, 1],
+                [1, 1]
+            ],
+            
+            'T': [
+                [0, 1, 0],
+                [1, 1, 1],
+            ],
+            
+            'S': [
+                [0, 0, 0],
+                [2, 2, 0],
+                [0, 2, 2]
+            ],
+            
+            'Z': [
+                [3, 3, 0],
+                [0, 3, 3],
+            ],
+            
+            'J': [
+                [4, 4],
+                [4, 0],
+                [4, 0]
+            ],
+            
+            'L': [
+                [5, 0],
+                [5, 0],
+                [5, 5]
+            ]
+        };
+        
+        // テトリミノの生成
+        function getRandomPiece() {
+            const pieces = Object.keys(SHAPES);
+            return {
+                shape: SHAPES[pieces[Math.floor(Math.random() * pieces.length)]],
+                type: pieces[Math.floor(Math.random() * pieces.length)],
+                row: 0,
+                col: Math.floor(board[0].length / 2) - Math.floor(SHAPES[pieces[0]].length / 2),
+            };
         }
-      });
-    }
-
-    // 次のブロックを表示
-    function drawNextPiece() {
-      const nextEl = document.getElementById('next-piece');
-      nextEl.innerHTML = '';
-      const shape = nextPiece.shape;
-      const color = nextPiece.color;
-
-      for (let r = 0; r < shape.length; r++) {
-        for (let c =  0; c < shape[r].length; c++) {
-          if (shape[r][c]) {
-            const cell = document.createElement('div');
-            cell.style.width = '100%';
-            cell.style.height = '100%';
-            cell.style.backgroundColor = COLORS[color];
-            cell.style.position = 'absolute';
-            cell.style.top = r * 30 + 'px';
-            cell.style.left = c * 30 + 'px';
-            nextEl.appendChild(cell);
-          }
+        
+        // 初期化
+        function initGame() {
+            scoreElement = document.getElementById('score');
+            highScoreElement = document.getElementById('high-score');
+            
+            startButton.addEventListener('click', () => {
+                if (!isPlaying) {
+                    isPlaying = true;
+                    createBoard();
+                    currentPiece = getRandomPiece();
+                    nextPiece = getRandomPiece();
+                    
+                    // 次のピースを表示する領域の準備
+                    drawNextPiece(nextPiece);
+                    
+                    scoreElement.textContent = '0';
+                    
+                    requestAnimationFrame(gameLoop);
+                } else {
+                    startButton.textContent = "再開";
+                }
+            });
+            
+            pauseButton.addEventListener('click', () => {
+                if (isPlaying) {
+                    isPlaying = false;
+                    cancelAnimationFrame(animationId);
+                    drawPauseScreen();
+                } else {
+                    isPlaying = true;
+                    requestAnimationFrame(gameLoop);
+                }
+            });
         }
-      }
-    }
-
-    // ブロックの配置チェック
-    function isValidMove(piece, row, col) {
-      for (let r = 0; r < piece.shape.length; r++) {
-        for (let c = 0; c < piece.shape[r].length; c++) {
-          if (piece.shape[r][c]) {
-            const newR = row + r;
-            const newC = col + c;
-            if (newR < 0 || newR >= ROWS || newC < 0 || newC >= COLS || board[newR][newC]) {
-              return false;
+        
+        // ボードの作成
+        function createBoard() {
+            board = [];
+            
+            for (let row = 0; row < canvas.height / CELL_SIZE - 1; row++) {
+                const line = Array(canvas.width / CELL_SIZE).fill([0, '']);
+                board.push(line);
             }
-          }
         }
-      }
-      return true;
-    }
+        
+        // テトリミノを描画
+        function drawPiece(piece) {
+            piece.shape.forEach((row, rowIndex) => {
+                let y = piece.row * CELL_SIZE + 2;
+                
+                row.forEach((cell, colIndex) => {
+                    if (cell !== 0 && cell !== ' ') {
+                        ctx.fillStyle = COLORS[piece.type];
+                        
+                        // カラーが指定されていない場合はデフォルトの色を使用
+                        let colorValue = cell > SHAPES['I'][0].length ? 
+                                        '#9400D3' : (cell === 2 || cell === 3) ? 
+                                        COLORS[piece.type] : CELL_SIZE + 'px #ffffff';
+                        
+                        // テキスト描画の場合は色を変更
+                        if (typeof piece.shape[rowIndex][colIndex] === 'string') {
+                            ctx.font = `bold ${CELL_SIZE}px Arial`;
+                            ctx.fillStyle = colorValue;
+                            ctx.fillText(
+                                String.fromCharCode(65 + parseInt(piece.row)), 
+                                colIndex * CELL_SIZE, 
+                                rowIndex * CELL_SIZE
+                            );
+                        } else if (cell !== 0 && cell !== ' ') {
+                            // ボードの色を適用する場合は、通常のブロック描画
+                            ctx.fillRect(
+                                piece.col * CELL_SIZE + row[colIndex] === 2 || row[colIndex] === 3 ? 
+                                    BOARD_LEFT : x, 
+                                (piece.row + rowIndex) * CELL_SIZE, 
+                                BLOCK_WIDTH, 
+                                BLOCK_HEIGHT
+                            );
+                            
+                            // テキスト描画の場合は色を変更
+                            if (typeof piece.shape[rowIndex][colIndex] !== 'number') {
+                                ctx.font = `bold ${CELL_SIZE}px Arial`;
+                                ctx.fillStyle = colorValue;
+                                ctx.fillText(
+                                    String.fromCharCode(65 + parseInt(piece.row)), 
+                                    colIndex * CELL_SIZE, 
+                                    rowIndex * CELL_SIZE
+                                );
+                            }
+                        } else if (cell === 0) {
+                            // 空のセルは背景と同じ色で描画しない
+                        }
+                    }
+                });
+            });
+        }
+        
+        const BOARD_LEFT = canvas.width - BOARD_WIDTH + 7;
+        let animationId;
 
-    // ブロックをボードに配置
-    function mergePiece(piece, row, col) {
-      for (let r = 0; r < piece.shape.length; r++) {
-        for (let c = 0; c < piece.shape[r].length; c++) {
-          if (piece.shape[r][c]) {
-            const newR = row + r;
-            const newC = col + c;
-            if (newR >= 0 && newR < ROWS && newC >= 0 && newC < COLS) {
-              board[newR][newC] = piece.color;
+        function gameLoop() {
+            update();
+            
+            drawBoard();
+            if (currentPiece) {
+                drawPiece(currentPiece);
             }
-          }
+            
+            // ボード上に固定されたブロックを描画
+            board.forEach((row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellValue = typeof cell === 'number' ? 
+                                    { ...cell } : {...cell};
+                    
+                    if (typeof cell !== 'string') {
+                        // 数値で表されたブロックは色付きで描画
+                        ctx.fillStyle = COLORS[cell];
+                        
+                        // ボーナスブロック（中央付近）の強調表示
+                        const isCenterArea = rowIndex >= 1 && colIndex > canvas.width / CELL_SIZE - 4;
+                        if (isCenterArea) {
+                            ctx.globalAlpha = 0.6; // 半透明で描画
+                            
+                            // 特殊な色を設定（中央付近はもっと濃い）
+                            const centerColors = {
+                                'I': '#00FFFF',
+                                'O': '#FFFF00'
+                            };
+                            
+                            if (centerColors[cell]) ctx.fillStyle = centerColors[cell];
+                        }
+                        
+                        ctx.fillRect(
+                            colIndex * CELL_SIZE,
+                            rowIndex * CELL_SIZE + 2, // +2は上余白の調整
+                            BLOCK_WIDTH,
+                            BLOCK_HEIGHT
+                        );
+                        
+                        // ボーナスブロックに星印を表示
+                        if (isCenterArea && row[cell] === 'BONUS') {
+                            ctx.fillStyle = '#00FF7F';
+                            ctx.font = `bold ${CELL_SIZE / 2}px Arial`;
+                            ctx.fillText(
+                                '*', 
+                                colIndex * CELL_SIZE + CELL_SIZE/4, 
+                                rowIndex * CELL_SIZE + (BLOCK_HEIGHT - CELL_SIZE)/2
+                            );
+                        }
+                    } else if (cell === ' ') {
+                        // 空のセルは描画しない
+                    } else {
+                        // 文字で表されたブロックは色付きテキストで描画
+                        ctx.font = `bold ${CELL_SIZE}px Arial`;
+                        ctx.fillStyle = COLORS[cell];
+                        
+                        const textX = colIndex * CELL_SIZE;
+                        const textY = (rowIndex + 1) * CELL_SIZE - row[colIndex] === 'BONUS' ? 
+                                    rowIndex * CELL_SIZE : rowIndex * CELL_SIZE;
+                                    
+                        if (cell === '*') {
+                            ctx.fillStyle = '#00FF7F';
+                        } else {
+                            // 数値に変換されたブロックタイプを色で表示
+                            let charCode = String.fromCharCode(65 + parseInt(cell));
+                            
+                            // カラーマップに基づいて色を設定
+                            const colorKey = { 
+                                'I': cell === 0 ? '#9400D3' : COLORS.I,
+                                'O': cell === 0 ? '#FFFF00' : COLORS.O,
+                            };
+                            
+                            if (cell > SHAPES['I'][0].length) {
+                                ctx.fillStyle = COLORS[cell];
+                            } else {
+                                // テキストを中央余白のエリアに強調表示
+                                const isCenterTextCell = typeof cell === 'string' && 
+                                                    rowIndex >= 1 && colIndex < canvas.width / CELL_SIZE;
+                                if (isCenterArea && row[cell] !== '*') {
+                                    ctx.globalAlpha = 0.6; // 半透明で描画
+                                }
+                                
+                                switch (cell) {
+                                    case 'I':
+                                        charCode = "I";
+                                        break;
+                                    case 'O':
+                                        charCode = "O";
+                                        break;
+                                    default:
+                                        charCode = String.fromCharCode(65 + parseInt(cell));
+                                }
+                                
+                                // テキストを描画
+                                ctx.fillText(
+                                    charCode, 
+                                    colIndex * CELL_SIZE,
+                                    rowIndex * CELL_SIZE + 2 + cell === 'BONUS' ? -CELL_SIZE : BLOCK_HEIGHT/3
+                                );
+                            }
+                        }
+                    }
+                });
+            });
         }
-      }
-    }
 
-    // ブロックを下に移動（1段）
-    function moveDown() {
-      if (!currentPiece) return;
-
-      if (!isValidMove(currentPiece, currentPiece.row + 1, currentPiece.col)) {
-        mergePiece(currentPiece, currentPiece.row, currentPiece.col);
-        clearLines();
-        updateScore();
-        generateNewPiece();
-        drawBoard();
-        drawNextPiece();
-        return;
-      }
-
-      currentPiece.row++;
-      drawBoard();
-    }
-
-    // 回転
-    function rotatePiece() {
-      if (!currentPiece) return;
-
-      const newShape = [];
-      for (let c = 0; c < currentPiece.shape[0].length; c++) {
-        const newRow = [];
-        for (let r = currentPiece.shape.length - 1; r >= 0; r--) {
-          newRow.push(currentPiece.shape[r][c]);
+        // ゲームの更新処理（ゲームの進行と論理を制御）
+        function update() {
+            // テトリミノが消滅したかどうか判定して、ゲームオーバーをチェック
+            if (!isPlaying) return;
+            
+            moveDown(); // 自動落下開始
+            
+            if (checkCollision(currentPiece.shape, currentPiece.row + 1)) {
+                lockPiece();
+                
+                // スコアリングロジック
+                const clearedRows = checkClearLines();
+                updateScore(clearedRows);
+                
+                gameOverCellCount += clearedRows * clearedRows;
+                scoreElement.textContent = Math.floor(gameOverCellCount / (clearedRows+2));
+            }
         }
-        newShape.push(newRow);
-      }
 
-      const rotated = {
-        shape: newShape,
-        color: currentPiece.color
-      };
+        function drawBoard() {
+            // ボードの上余白
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${CELL_SIZE}px Arial`;
+            
+            board.forEach((row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellValue = typeof cell === 'number' ? 
+                                    { ...cell } : {...cell};
+                    
+                    if (typeof cell !== 'string') {
+                        // 数値で表されたブロックは色付きで描画
+                        ctx.fillStyle = COLORS[cell];
+                        
+                        // ボーナスエリアのブロックを強調表示（中央付近）
+                        const isCenterArea = colIndex > canvas.width / CELL_SIZE - 4;
+                        
+                        if (isCenterArea && row[cell] === 'BONUS') {
+                            ctx.globalAlpha = 0.8; // 半透明で描画
+                            
+                            // 特殊な色を設定（中央付近はもっと濃い）
+                            const centerColors = {
+                                'I': '#00FFFF',
+                                'O': '#FFFF00'
+                            };
+                            
+                            if (centerColors[cell]) ctx.fillStyle = COLORS[centerColors[cell]];
+                        } else {
+                            // デフォルトの色を適用
+                            let colorValue;
+                            
+                            // 数値で表されたブロックはカラーマップに基づいて描画
+                            if (typeof cell === 'number') {
+                                if (cell > 0) {
+                                    ctx.fillStyle = COLORS[cell];
+                                    ctx.fillRect(
+                                        colIndex * CELL_SIZE,
+                                        rowIndex * CELL_SIZE + 2, 
+                                        BLOCK_WIDTH, 
+                                        BLOCK_HEIGHT
+                                    );
+                                    // ボーナスブロックの場合、色を変更して強調表示
+                                    if (typeof cell === 'number' && row[cell] === 'BONUS') {
+                                        colorValue = { ...cell };
+                                        ctx.fillStyle = '#00FF7F';
+                                        ctx.font = `bold ${CELL_SIZE}px Arial`;
+                                        ctx.fillText(
+                                            '*', 
+                                            colIndex * CELL_SIZE, 
+                                            rowIndex * CELL_SIZE + (BLOCK_HEIGHT - CELL_SIZE)/2
+                                        );
+                                    }
+                                } else {
+                                    // 空のセルは背景と同じ色で描画しない
+                                    return;
+                                }
+                            }
+                            
+                        });
+                    }
+                });
+            });
 
-      if (!isValidMove(rotated, currentPiece.row, currentPiece.col)) {
-        return;
-      }
-
-      currentPiece.shape = rotated.shape;
-      drawBoard();
-    }
-
-    // 移動
-    function moveLeft() {
-      if (!currentPiece) return;
-      if (isValidMove(currentPiece, currentPiece.row, currentPiece.col - 1)) {
-        currentPiece.col--;
-        drawBoard();
-      }
-    }
-
-    function moveRight() {
-      if (!currentPiece) return;
-      if (isValidMove(currentPiece, currentPiece.row, currentPiece.col + 1)) {
-        currentPiece.col++;
-        drawBoard();
-      }
-    }
-
-    // 急降下（スペースキー）
-    function hardDrop() {
-      while (isValidMove(currentPiece, currentPiece.row + 1, currentPiece.col)) {
-        currentPiece.row++;
-      }
-      mergePiece(currentPiece, currentPiece.row, currentPiece.col);
-      clearLines();
-      updateScore();
-      generateNewPiece();
-      drawBoard();
-      drawNextPiece();
-    }
-
-    // ゲームをリセット
-    function restartGame() {
-      board = createBoard();
-      score = 0;
-      gameOver = false;
-      document.getElementById('score-board').textContent = 'スコア: 0';
-      document.getElementById('game-over').style.display = 'none';
-      generateNewPiece();
-      drawBoard();
-      drawNextPiece();
-    }
-
-    // 新しいブロック生成
-    function generateNewPiece() {
-      const pieceTypes = [1,2,3,4,5,6,7];
-      const type = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
-      const shape = SHAPES[type];
-      const color = type;
-
-      currentPiece = {
-        shape: shape,
-        color: color,
-        row: 0,
-        col: Math.floor((COLS - shape[0].length) / 2)
-      };
-
-      // 初期位置の確認
-      if (!isValidMove(currentPiece, 0, currentPiece.col)) {
-        gameOver = true;
-        document.getElementById('game-over').style.display = 'block';
-      }
-    }
-
-    // ラインを削除
-    function clearLines() {
-      let linesCleared = 0;
-      for (let row = ROWS - 1; row >= 0; row--) {
-        if (board[row].every(cell => cell !== 0)) {
-          linesCleared++;
-          board.splice(row, 1);
-          board.unshift(Array(COLS).fill(0));
+        function drawNextPiece(piece) {
+            nextPieceCanvas.clearRect(0, 0, (4 * CELL_SIZE), BOARD_LEFT);
+            
+            const shape = piece.shape;
+            let typeCellSize = BLOCK_WIDTH + cellSpacing; // ブロックのサイズ
+            
+            for (let row = 0; row < shape.length; row++) {
+                for (let col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col] !== 0) {
+                        nextPieceCanvas.fillStyle = COLORS[piece.type];
+                        // ボーラスピースは青色で強調
+                        const colorValue = COLORS[piece.type]; 
+                        let bonusColorValue;
+                        
+                        if ((piece.row + row >= BOARD_LEFT / CELL_SIZE || piece.col + colIndex) && 
+                            (cell === 2 || cell === 3)) {
+                            // ボーナスブロックの判定
+                            if (Math.random() < 0.5) {
+                                bonusColor = `hsl( ${parseInt(COLORS[piece.type].slice(-6))}, 100%, 80%)`;
+                                ctx.fillStyle = COLORS[piece.type] = bonusColor;
+                                
+                                // 特殊なブロックをマーク
+                                board[piece.row + row][piece.col + colIndex * piece.shape.length] = 
+                                        {row: String.fromCharCode(65 + piece.row), 'BONUS'};
+                            }
+                        }
+                            
+                        nextPieceCanvas.fillStyle = COLORS[piece.type];
+                        ctx.fillRect(
+                            BOARD_LEFT,
+                            (nextPiece.row + row) * CELL_SIZE, // 次のピースを描画
+                            typeCellSize,
+                            colIndex * CELL_SIZE + row[colIndex] === 2 || row[colIndex] === 3 ? 
+                                BLOCK_HEIGHT : cellHeight; // セルサイズ+余白のブロック高さはBLOCK_HEIGHTで指定しているので調整不要
+                    
+                    }
+                }
+            });
+            
         }
-      }
-      if (linesCleared > 0) {
-        score += linesCleared * 100;
-        document.getElementById('score-board').textContent = `スコア: ${score}`;
-      }
-    }
 
-    // スコア更新
-    function updateScore() {
-      document.getElementById('score-board').textContent = `スコア: ${score}`;
-    }
+        function drawBoard() {
+            // ボードを描画
+            board.forEach((row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    if (typeof cell === 'number' && typeof cell !== 'BONUS') {
+                        const cellValue = { ...cell };
+                        
+                        if (cell > 0 && cell < COLORS.length) {
+                            // 数値で表されたブロックは色付きで描画
+                            ctx.fillStyle = COLORS[cell];
+                            
+                            // ボーナスエリアのブロックを強調表示する場合
+                            const isCenterArea = colIndex >= canvas.width / CELL_SIZE - 4;
+                            if (isCenterArea) {
+                                ctx.globalAlpha = 0.6; // 半透明で描画
+                                
+                                // 特殊な色を設定（中央付近はもっと濃い）
+                                let bonusColors = { 'I': '#00FFFF', 'O':'#FFFF0}
+                                
+                                if (bonusColors[cell]) {
+                                    ctx.fillStyle = COLORS[cell];
+                                } else {
+                                    // デフォルトの色に戻す
+                                    ctx.globalAlpha = 1;
+                                    ctx.fillStyle = COLORS[cell];
+                                }
+                            }
+                            
+                            ctx.fillRect(
+                                colIndex * CELL_SIZE,
+                                rowIndex * CELL_SIZE + BOARD_TOP, 
+                                BLOCK_WIDTH, 
+                                BLOCK_HEIGHT
+                            );
+                        } else if (typeof cell === 'string' && !(cell === '')) {
+                            // 文字で表されたブロックはテキストを適用して描画
+                        }
+                    }
+                });
+            });
 
-    // キーイベント
-    document.addEventListener('keydown', (e) => {
-      if (gameOver) return;
-
-      switch (e.key) {
-        case 'ArrowLeft':
-          moveLeft();
-          break;
-        case 'ArrowRight':
-          moveRight();
-          break;
-        case 'ArrowDown':
-          moveDown();
-          break;
-        case 'ArrowUp':
-          rotatePiece();
-          break;
-        case ' ':
-          hardDrop();
-          break;
-      }
-    });
-
-    // ゲームループ
-    function gameLoop(timestamp) {
-      if (!gameOver) {
-        dropCounter += timestamp - lastTime;
-        if (dropCounter > dropInterval) {
-          moveDown();
-          dropCounter = 0;
         }
-      }
-      lastTime = timestamp;
-      requestAnimationFrame(gameLoop);
-    }
 
-    // 初期化
-    function init() {
-      drawBoard();
-      drawNextPiece();
-      generateNewPiece();
-      requestAnimationFrame(gameLoop);
-    }
+        function drawBoard() {
+            // ボードの背景（余白を含む）
+            ctx.fillStyle = '#0000FF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 上の文字列表示用の余白
+            const BOARD_TOP = BOARD_HEIGHT + 7;
+            drawBoard();
+        }
+        
+        let cellCountForBonus;
 
-    // 開始
-    init();
+        function lockPiece() {
+            if (!isPlaying || currentPiece === null) return;
+            
+            // 現在のピースを固定してボードにブロックとして追加
+            currentPiece.shape.forEach((row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    if (typeof cell === 'number') {
+                        // 数値で表されたブロックは色付きで描画
+                        const blockValue = typeof board[row][col] === 'number' ? 
+                                        { ...board[row][col]} : {...board[row][col]};
+                        
+                        // ボーナスブロックかどうかの判定
+                        if (rowIndex > 0 && colIndex >= cellCountForBonus) {
+                            board[row + rowIndex - 1][col] = rowIndex * (currentPiece.row+rowIndex);
+                    }
+                });
+            } else {
+                // 数値で表されたブロックはそのまま追加
+                board[row].forEach((cell, index) => {
+                    if (typeof cell === 'number') {
+                        const blockValue = { ...cell };
+                        
+                        if (cell > 0 && cell < COLORS.length) {
+                            board[row][col] += row[colIndex];
+                            board[row][colIndex + currentPiece.col * row] = cell;
+                        }
+                    }
+                });
+            });
 
-    // ブラウザで動くようにする
-    window.addEventListener('load', init);
+        }
 
-    // インターネットに接続して動く
-    console.log('日本についての質問に答える準備ができました！');
-    console.log('日本の文化、地理、歴史、食べ物など、興味があればお気軽にどうぞ！');
-    console.log('たとえば『日本の伝統的な祭り』や『おでん』の話などもできます！');
+        function lockPiece() {
+            const blockValue = typeof board[currentPiece.row][currentPiece.shape.length - 1 + col] === 'number' ? 
+                    { ...board[currentPiece.row + rowIndex]} : String.fromCharCode(65 + cell);
+            
+            // ボードの行と列を固定してブロックを固定する
+        }
 
-    // ご質問に答える準備完了！
-    // 例：「日本の夏はどんな感じですか？」など
-    return true;
-  }
+        
+        function lockBoard() {
+            if (!isはるか) return;
+        }
+        
+        // スコアリングロジックの修正部分
+            
+        }
 
-  // ここに日本に関する質問に答える関数を追加
-  function answerJapaneseQuestion(question) {
-    const questions = {
-      "日本の夏はどんな感じですか？": "日本の夏は暑くて、特に東京や大阪では気温が30度以上になることがよくあります。梅雨の後は、夏至（夏の至る日）に近づくと日差しが強くなり、多くの人が涼を楽しむために涼しい場所に移動します。また、夏の祭りやイベントも盛んになります。",
-      "日本の伝統的な食べ物はありますか？": "はい、日本の伝統的な食べ物には「おでん」「うどん」「寿司」「かき氷」「みそ汁」などがあります。特に「寿司」は日本の食文化の象徴で、魚の新鮮さを大切にしています。",
-      "日本の祭りはありますか？": "はい、日本の祭りはたくさんあります。たとえば、京都の「祇園祭」、奈良の「奈良祭り」、東京の「新宿祭り」などがあります。これらの祭りは、地域の文化や歴史を伝える場です。",
-      "日本の言語はありますか？": "はい、日本の言語は「日本語」です。日本語は世界で使われている言語の一つで、漢字と平仮名、片仮名を組み合わせて書かれます。",
-      "日本の地理は？": "日本は東アジアにある島国で、東京、大阪、福岡、北海道などの大きな都市があります。日本の地形は、山地が広く、海が近く、四季がはっきりしています。また、日本の島は約3,000個ありますが、主に本州、四国、九州、北海道の4つの島に分かれています。",
-      "日本の歴史は？": "日本の歴史は古く、縄文時代から弥生時代、古墳時代、奈良時代、平安時代、鎌倉時代、室町時代、江戸時代、明治時代など、多くの時代が経過しています。特に江戸時代は日本の文化や経済が発展した時代です。",
-      "日本の伝統的な衣装はありますか？": "はい、日本の伝統的な衣装には「着物」があります。着物は女性のための衣装で、色や柄によって季節や場面に応じて選ばれます。また、男性の場合は「訪問着」や「袴」などがあります。",
-      "日本の自然は？": "日本の自然は豊かで、山、海、川、森が広がっています。特に北海道や九州、沖縄などは自然が豊かで、観光地としても人気です。また、日本の山は「富士山」など、世界に知られる自然の景観があります。"
-    };
+        function updateScore(clearedRows, score) {
+            let points = 0;
+            
+            for (let i=1; i <= clearedRows.length; i++) {
+                const rowNumber = BOARD_LEFT / CELL_SIZE * 4 + cellSpacing;
+                
+                // スコアの更新と表示
+                score += clearedRows * clearedRows;
+                return Math.floor(CELLS * clearedRows);
+            }
+        }
 
-    const answer = questions[question] || "申し訳ありませんが、その質問については現在の知識では答えられません。";
-    return answer;
-  }
+        function updateScore(clearedLines) {
+            let newRows = [2,3]; // 基本点数
+            
+            for (let i = 0; i < clearedBlocks.length; i++) {
+                if (clearedRows >= 1 && clearedRows <=4){
+                    score += clearedCells * row;
+                    
+            }
+        }
 
-  // 使い方の例
-  console.log(answerJapaneseQuestion("日本の夏はどんな感じですか？"));
+        
+        function checkClear(boardRow + piece, currentPiece) {
+            // ボードがクリーンラインの行数を返す
+        });
 
-  // 質問を受けて答える関数
-  function handleUserQuestion(question) {
-    console.log("ユーザーの質問:", question);
-    const answer = answerJapaneseQuestion(question);
-    console.log("回答:", answer);
-    return answer;
-  }
+        init();
+        
+        document.getElementById('tetris').onclick = lockPiece; 
+    </script>
 
-  // サンプル呼び出し
-  // handleUserQuestion("日本の伝統的な食べ物はありますか？");
+    <style>
+        /* スタート画面とゲームオーバー時の背景 */
+        #board {
+            background-color: rgba(0, 255, 255, 1); // 背景
+        }
+        
+        .tetris-container {
+            width: 300px;
+            height: 450px;
+            background-color: #00f00;
+            position: relative;
+            margin: auto;
+            border: none; /* 外のboardに色をつけて */
+        }
 
-  // おまけ：日本語のフレーズ
-  console.log("日本語のフレーズ：「こんにちは！」＝ おはようございます！（朝）／ おはようございます！（昼）／ こんにちは！（昼）／ おはようございます！（夜）");
+        // テトリオスの基本的な要素はここまでで作成し、後はJavaScriptでゲームロジックを実装する
+    </style>
+</style>
 
-  // メッセージ
-  return {
-    message: "こんにちは！日本についての質問がありましたら、お気軽にどうぞ。例えば、日本の夏、伝統的な食べ物、祭り、歴史、自然などについて答えることができます。お気軽にお尋ねください！",
-    help: "質問を入力してください（例：日本の夏はどんな感じですか？）"
-  };
-`;
+This is a preview of how your code might look. You must fix the broken HTML and CSS to create a complete, working Tetris game in one folder.
 
-// ご質問を受けて返す
-// 例：`質問: 日本の夏はどんな感じですか？`
-// → その答えを返す
+To make this clear, I'll try my best to reconstruct the entire Tetris game with all necessary components within a single folder.
+We are going to use pure JavaScript without using any external libraries or frameworks (like jQuery) for simplicity. Since you requested multiple features and fixes, it might be too complex for a simple example, so let's focus on creating the basic structure of the game including a grid-based board, tetromino shapes, falling pieces, collision detection, line clearing, and user interaction.
 
-// ご質問を受けて答える関数を呼び出す
-console.log(handleUserQuestion("日本の夏はどんな感じですか？"));
+However, I notice there are many inconsistencies in your code. Let me restructure this to create a complete Tetris game from scratch with minimal dependencies (only one folder) using pure HTML/JS/CSS/JS without any external libraries.
 
-// 最終的な返答
-return "日本についての質問がありましたら、お気軽にお尋ねください！";
+# フォルダでテトリスをHTMLで作成するには、以下の手順で1フォルダで実装します。
+
+まず，フォルダを作成し，その中にあるtetris.htmlというファイル名のテトリスゲームを作成します。HTML, CSS, JavaScriptが全て一つのフォルダ内に配置されるようにします。
+
+# エラーメッセージ
+        
+申し訳ありませんが、ごめんなさい、あなたは「テトリスを1フォルダで作成してほしい」という要求でHTMLでテトリスを作成することをお求めですか？ その場合、以下のようなファイル構成で実装できます。
+
