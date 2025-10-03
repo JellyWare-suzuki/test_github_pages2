@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>刈谷中学校 ○×クイズ</title>
+  <title>刈谷中学校 〇×クイズ：特別編</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #f2f2f2;
+      font-family: "Segoe UI", sans-serif;
+      background: #f0f8ff;
       padding: 20px;
       text-align: center;
     }
@@ -14,22 +14,22 @@
       color: #2c3e50;
     }
     .quiz-box {
-      background: #fff;
+      background: #ffffff;
       padding: 20px;
-      border-radius: 10px;
+      border-radius: 12px;
       display: inline-block;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
     }
     .question {
-      font-size: 1.2em;
+      font-size: 1.3em;
       margin-bottom: 20px;
     }
     button {
-      padding: 10px 30px;
-      font-size: 16px;
+      padding: 10px 35px;
+      font-size: 18px;
       margin: 10px;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
     }
     .true {
@@ -47,7 +47,7 @@
   </style>
 </head>
 <body>
-  <h1>刈谷中学校 ○×クイズ</h1>
+  <h1>刈谷中学校 ○×クイズ：特別編</h1>
   <div class="quiz-box">
     <div id="question" class="question">読み込み中...</div>
     <button class="true" onclick="answer(true)">〇</button>
@@ -58,16 +58,24 @@
   <script>
     const quiz = [
       {
-        question: "刈谷中学校は愛知県にあります。",
-        correct: true
-      },
-      {
-        question: "刈谷中学校の校章はライオンです。",
+        question: "刈谷中学校には毎年『牛とふれあう日』という行事があります。",
         correct: false
       },
       {
-        question: "刈谷中学校は創立100年以上の歴史があります。",
+        question: "体育の授業で格闘技の授業がある。",
+        correct: false
+      },
+      {
+        question: "刈谷中学校には『RPG研究会』というクラブが存在する。",
         correct: true
+      },
+      {
+        question: "刈谷中学校の校庭にはリンゴの木が1本植えられている。",
+        correct: true
+      },
+      {
+        question: "3年生になると“覇気”が使えるようになるという伝説がある。",
+        correct: false
       }
     ];
 
@@ -83,14 +91,14 @@
         resultEl.textContent = "";
       } else {
         questionEl.textContent = "クイズ終了！";
-        resultEl.innerHTML = `あなたの得点は <strong>${score} / ${quiz.length}</strong> 点です。`;
+        resultEl.innerHTML = `あなたの得点は <strong>${score} / ${quiz.length}</strong> 点です。<br>お疲れさまでした！`;
         document.querySelectorAll("button").forEach(btn => btn.style.display = "none");
       }
     }
 
     function answer(choice) {
       const isCorrect = quiz[current].correct === choice;
-      resultEl.textContent = isCorrect ? "正解！" : "不正解…";
+      resultEl.textContent = isCorrect ? "正解！🎉" : "不正解…😢";
       if (isCorrect) score++;
       current++;
       setTimeout(showQuestion, 1000);
