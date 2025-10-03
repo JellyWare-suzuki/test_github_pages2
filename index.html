@@ -1,85 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-    <title>テトリス</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-        }
-        
-        body { 
-            background-color: #1a237e; /* 深青色の背景 */
-            color: white;
-            text-align: center;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        
-        canvas {
-            border: 2px solid white;
-            background-color: #00F5FF; 
-        }
-
-        .game-container {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            height: 100vh;
-        }
-
-        h3 { color: red; font-family: Arial, sans-serif; }
-    </style>
+  <meta charset="UTF-8">
+  <title>刈谷中学校 ○×クイズ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f2f2f2;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    .quiz-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      display: inline-block;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .question {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 30px;
+      font-size: 16px;
+      margin: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .true {
+      background-color: #2ecc71;
+      color: white;
+    }
+    .false {
+      background-color: #e74c3c;
+      color: white;
+    }
+    #result {
+      font-size: 1.2em;
+      margin-top: 20px;
+    }
+  </style>
 </head>
-
 <body>
-    <h1>テトリス (Tetris)</h1>
-    
-    <div class="game-container">
-        <canvas id="tetris" width="300" height="600"></canvas>
-        
-        <script>
-            const canvas = document.getElementById('tetris');
-            ctx = canvas.getContext('2d');
-            
-            // ゲームの定数
-            const ROWS = 20;
-            const COLS = 10;
-            let scoreElement = null;   // スコア表示の要素
-            let boardWidth = COLS * CELL_SIZE + GAP,
-                boardWidth = canvas.width = 300, 
-                boardWidth = COLS * CELL_SIZE,
-                cellSize = 30;
+  <h1>刈谷中学校 ○×クイズ</h1>
+  <div class="quiz-box">
+    <div id="question" class="question">読み込み中...</div>
+    <button class="true" onclick="answer(true)">〇</button>
+    <button class="false" onclick="answer(false)">×</button>
+    <div id="result"></div>
+  </div>
 
-            // テトリオの種類を定義する変数と配列
-            const PIECES = [
-                {type:'I', shape: [[1,1,1], [2,2] ], color:'#0f0' },
-                {type:'J', shape: [[0, 1, 0],[1, 1, 1]], color:'#00f'}, // J
-                {type:'L', shape: [[3,4],[5,6]]}
-            ];
-            
-            class Board {
-              constructor() {
-                this.width = COLS;
-                this.height = ROWS;
-                this.board = [];
-                
-                for (let y = 0; y < this.height; y++) {
-                  board[y] = Array(COLS).fill(0);
-                }
-                
-                // ボーナスエリアの設定
-                const bonusAreaCols = Math.floor(COLS/2) - cellCountForBonus;
-                let scorePerRow = (clearedRows === 1 ? 4 : clearedRows * 2 + 3); 
-              }
+  <script>
+    const quiz = [
+      {
+        question: "刈谷中学校は愛知県にあります。",
+        correct: true
+      },
+      {
+        question: "刈谷中学校の校章はライオンです。",
+        correct: false
+      },
+      {
+        question: "刈谷中学校は創立100年以上の歴史があります。",
+        correct: true
+      }
+    ];
 
-        </script>
-    </div>
+    let current = 0;
+    let score = 0;
 
+    const questionEl = document.getElementById("question");
+    const resultEl = document.getElementById("result");
+
+    function showQuestion() {
+      if (current < quiz.length) {
+        questionEl.textContent = quiz[current].question;
+        resultEl.textContent = "";
+      } else {
+        questionEl.textContent = "クイズ終了！";
+        resultEl.innerHTML = `あなたの得点は <strong>${score} / ${quiz.length}</strong> 点です。`;
+        document.querySelectorAll("button").forEach(btn => btn.style.display = "none");
+      }
+    }
+
+    function answer(choice) {
+      const isCorrect = quiz[current].correct === choice;
+      resultEl.textContent = isCorrect ? "正解！" : "不正解…";
+      if (isCorrect) score++;
+      current++;
+      setTimeout(showQuestion, 1000);
+    }
+
+    showQuestion();
+  </script>
 </body>
 </html>
